@@ -1,0 +1,13 @@
+{
+  "name": "Absensi Piket Kelas",
+  "short_name": "Absensi Piket",
+  "description": "Sistem absensi piket kelas berbasis kamera dan pengenalan wajah.",
+  "lang": "id-ID",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F5FA",
+  "theme_color": "#FFFFFF"
+}
