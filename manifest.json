@@ -1,0 +1,11 @@
+{
+  "name": "Absensi Piket Kelas",
+  "short_name": "Absensi Piket",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F5FA",
+  "theme_color": "#FFFFFF",
+  "description": "Aplikasi absensi piket kelas berbasis kamera dan AI."
+}
