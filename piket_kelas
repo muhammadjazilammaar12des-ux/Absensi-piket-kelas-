@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Absensi Piket Kelas Modern</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in { animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        #video-kamera { object-fit: cover; border-radius: 0.75rem; width: 100%; height: 280px; display: none; background-color: #000; }
+        #canvas-hasil { display: none; border-radius: 0.75rem; width: 100%; height: 280px; object-fit: cover; }
+        /* Animasi loading pulse */
+        .loading-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased selection:bg-blue-200">
+
+    <main class="max-w-md mx-auto min-h-screen bg-white shadow-md relative pb-32 fade-in">
+        
+        <!-- Header -->
+        <header class="px-6 pt-7 pb-5 border-b border-gray-100 bg-white sticky top-0 z-10">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-gray-900">Piket Kelas 12A</h1>
+                    <p class="text-xs text-gray-500 mt-0.5" id="teks-tanggal">Memuat tanggal...</p>
+                </div>
+                <span class="bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-100">
+                    Kelompok 2
+                </span>
+            </div>
+        </header>
+
+        <div class="p-6 space-y-5">
+            
+            <!-- Kartu Status & Lokasi -->
+            <section class="bg-gradient-to-br from-blue-50 to-indigo-50/30 border border-blue-100 rounded-2xl p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-bold text-blue-600 uppercase tracking-wider">Status Tugas</p>
+                        <h2 class="text-base font-bold text-gray-900 mt-0.5">Menyapu & Papan Tulis</h2>
+                        <p id="status-waktu" class="text-xs text-gray-600 mt-1">Batas Absen: Pukul 07.00 WIB</p>
+                        <p id="status-lokasi" class="text-[10px] font-semibold text-amber-600 mt-1 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            Mengecek lokasi...
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pilihan Kehadiran (Sesuai Kriteria 6: Izin/Sakit) -->
+            <section id="area-opsi-kehadiran">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Keterangan Kehadiran</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" class="btn-opsi bg-blue-600 text-white border-blue-600 text-xs font-semibold py-2 rounded-lg border transition-all" data-status="hadir">Hadir</button>
+                    <button type="button" class="btn-opsi bg-white text-gray-600 border-gray-200 hover:bg-gray-50 text-xs font-semibold py-2 rounded-lg border transition-all" data-status="sakit">Sakit</button>
+                    <button type="button" class="btn-opsi bg-white text-gray-600 border-gray-200 hover:bg-gray-50 text-xs font-semibold py-2 rounded-lg border transition-all" data-status="izin">Izin</button>
+                </div>
+            </section>
+
+            <!-- Area Tampilan Kamera / Preview Foto -->
+            <section id="area-kamera" class="w-full relative fade-in hidden">
+                <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-black">
+                    <video id="video-kamera" autoplay playsinline muted></video>
+                    <canvas id="canvas-hasil"></canvas>
+                    
+                    <button id="btn-tukar-kamera" type="button" class="absolute top-3 right-3 bg-black/50 backdrop-blur-md text-white p-2 rounded-full hover:bg-black/70 transition-all hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Input Fallback -->
+                <div id="wrapper-fallback" class="hidden mt-3">
+                    <label id="label-fallback" class="block text-xs font-semibold text-gray-600 mb-1">Gunakan Kamera Bawaan / Upload Surat:</label>
+                    <input type="file" id="input-kamera-fallback" accept="image/*" capture="environment" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 px-3 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-200 rounded-xl cursor-pointer" />
+                </div>
+            </section>
+
+            <!-- Pesan Warning / Status Error -->
+            <div id="pesan-sistem" class="text-xs text-center font-medium p-3 rounded-xl hidden transition-all"></div>
+
+            <!-- Daftar Anggota Piket -->
+            <section class="border-t border-gray-100 pt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Anggota Hari Ini</h3>
+                    <span id="counter-piket" class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">0/0 Selesai</span>
+                </div>
+                <div id="wadah-anggota" class="space-y-2"></div>
+            </section>
+
+            <!-- Tombol Bagikan ke WhatsApp -->
+            <section id="area-share-wa" class="hidden fade-in pt-2">
+                <a id="btn-share-wa" href="#" target="_blank" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 text-sm">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                    <span>Bagikan Laporan ke WhatsApp</span>
+                </a>
+            </section>
+
+        </div>
+
+        <!-- Sticky Footer Action Button -->
+        <footer class="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-md border-t border-gray-100 p-4 z-20">
+            <button id="btn-aksi" type="button" disabled class="w-full bg-gray-300 text-gray-500 font-semibold py-3.5 px-4 rounded-xl shadow-md transition-all flex justify-center items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <span id="label-btn-aksi" class="text-sm">Menunggu Verifikasi Sistem...</span>
+            </button>
+        </footer>
+
+    </main>
+
+    <script>
+        (function() {
+            "use strict";
+
+            // State Management
+            const state = {
+                mode: 'awal', 
+                keterangan: 'hadir', // hadir, sakit, izin
+                stream: null,
+                facingMode: 'environment',
+                fileBlob: null,
+                lokasiValid: false,
+                waktuValid: false
+            };
+
+            const anggotaPiket = [
+                { id: 1, nama: "Ahmad Rizky", status: "sudah" },
+                { id: 2, nama: "Muhammad Jazil (Anda)", status: "belum" },
+                { id: 3, nama: "Budi Santoso", status: "belum" },
+                { id: 4, nama: "Dewi Lestari", status: "belum" }
+            ];
+
+            // DOM Elements
+            const elTanggal = document.getElementById('teks-tanggal');
+            const btnAksi = document.getElementById('btn-aksi');
+            const labelBtnAksi = document.getElementById('label-btn-aksi');
+            const video = document.getElementById('video-kamera');
+            const canvas = document.getElementById('canvas-hasil');
+            const areaKamera = document.getElementById('area-kamera');
+            const wrapperFallback = document.getElementById('wrapper-fallback');
+            const inputFallback = document.getElementById('input-kamera-fallback');
+            const pesanSistem = document.getElementById('pesan-sistem');
+            const wadahAnggota = document.getElementById('wadah-anggota');
+            const counterPiket = document.getElementById('counter-piket');
+            const btnTukarKamera = document.getElementById('btn-tukar-kamera');
+            const btnsOpsi = document.querySelectorAll('.btn-opsi');
+            const statusLokasi = document.getElementById('status-lokasi');
+            const labelFallback = document.getElementById('label-fallback');
+
+            // 1. Inisialisasi Waktu & Tanggal (Kriteria 3 - Schedule Lock)
+            function cekWaktu() {
+                const now = new Date();
+                const opsiTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                if (elTanggal) elTanggal.innerText = now.toLocaleDateString('id-ID', opsiTanggal);
+
+                const jam = now.getHours();
+                // Simulasi Jadwal: Aktif hanya jam 05:00 - 15:00
+                if (jam >= 5 && jam <= 15) {
+                    state.waktuValid = true;
+                } else {
+                    state.waktuValid = false;
+                    tampilkanPesan("Di luar jam operasional piket (05.00 - 15.00).", "bg-red-50 text-red-700");
+                }
+            }
+
+            // 2. Cek Geolokasi Radius Sekolah (Kriteria 4 - Geolocation Restriction)
+            function cekLokasi() {
+                if (!navigator.geolocation) {
+                    statusLokasi.innerHTML = "❌ GPS tidak didukung di perangkat ini.";
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        // Simulasi perhitungan radius (Bisa menggunakan formula Haversine di Backend)
+                        state.lokasiValid = true; 
+                        statusLokasi.className = "text-[10px] font-semibold text-emerald-600 mt-1 flex items-center gap-1";
+                        statusLokasi.innerHTML = `✓ Lokasi Sesuai (Akurasi ${Math.round(pos.coords.accuracy)}m)`;
+                        bukaGembokAwal();
+                    },
+                    (err) => {
+                        statusLokasi.className = "text-[10px] font-semibold text-red-600 mt-1 flex items-center gap-1";
+                        statusLokasi.innerHTML = "❌ Akses lokasi ditolak / luar radius.";
+                        tampilkanPesan("Wajib izinkan akses lokasi (GPS) untuk absen.", "bg-red-50 text-red-700");
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            }
+
+            function bukaGembokAwal() {
+                if(state.waktuValid && state.lokasiValid) {
+                    btnAksi.disabled = false;
+                    btnAksi.className = "w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3.5 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all flex justify-center items-center gap-2";
+                    labelBtnAksi.innerText = "Buka Kamera Absen";
+                }
+            }
+
+            // 3. Render List Anggota Piket
+            function renderAnggota() {
+                if (!wadahAnggota) return;
+                let html = '';
+                let selesai = 0;
+
+                anggotaPiket.forEach(item => {
+                    const isSudah = item.status === 'sudah';
+                    if (isSudah) selesai++;
+
+                    const badgeClass = isSudah ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200';
+                    const dotClass = isSudah ? 'bg-emerald-500' : 'bg-amber-400';
+                    const labelStatus = isSudah ? '✓ Sudah' : 'Belum';
+
+                    html += `
+                        <div class="flex justify-between items-center bg-gray-50/80 border border-gray-100 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full ${dotClass}"></span>
+                                <span class="text-xs font-semibold text-gray-800">${item.nama}</span>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeClass}">${labelStatus}</span>
+                        </div>`;
+                });
+
+                wadahAnggota.innerHTML = html;
+                if (counterPiket) counterPiket.innerText = `${selesai}/${anggotaPiket.length} Selesai`;
+            }
+
+            // 4. Handle Opsi Kehadiran (Hadir/Sakit/Izin)
+            btnsOpsi.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (state.mode === 'sukses') return; // Kunci jika sudah sukses
+                    
+                    // Reset styling semua tombol
+                    btnsOpsi.forEach(b => {
+                        b.className = "btn-opsi bg-white text-gray-600 border-gray-200 hover:bg-gray-50 text-xs font-semibold py-2 rounded-lg border transition-all";
+                    });
+                    
+                    // Aktifkan tombol terpilih
+                    const target = e.target;
+                    target.className = "btn-opsi bg-blue-600 text-white border-blue-600 text-xs font-semibold py-2 rounded-lg border transition-all";
+                    state.keterangan = target.dataset.status;
+
+                    if (state.keterangan !== 'hadir') {
+                        areaKamera.classList.remove('hidden');
+                        aktifkanFallback('UploadSurat');
+                    } else {
+                        areaKamera.classList.add('hidden');
+                        state.mode = 'awal';
+                        labelBtnAksi.innerText = "Buka Kamera Absen";
+                    }
+                });
+            });
+
+            // 5. Event Delegation Utama
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('#btn-tukar-kamera')) {
+                    e.preventDefault();
+                    state.facingMode = (state.facingMode === 'environment') ? 'user' : 'environment';
+                    inisialisasiKamera();
+                    return;
+                }
+
+                if (e.target.closest('#btn-aksi')) {
+                    e.preventDefault();
+                    if ("vibrate" in navigator) navigator.vibrate(40);
+
+                    if (state.mode === 'awal') {
+                        if (state.keterangan === 'hadir') {
+                            inisialisasiKamera();
+                        } else {
+                            // Langsung proses jika sakit/izin (sudah upload file)
+                            prosesPengiriman();
+                        }
+                    } else if (state.mode === 'kamera_aktif') {
+                        jepretFoto();
+                    } else if (state.mode === 'review') {
+                        prosesPengiriman();
+                    }
+                }
+            });
+
+            // 6. Lapis 1: Inisialisasi WebRTC
+            async function inisialisasiKamera() {
+                setLoadingState(true, "Memuat Kamera...");
+                areaKamera.classList.remove('hidden');
+                hentikanStream();
+
+                try {
+                    const streamData = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: state.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                        audio: false
+                    });
+                    state.stream = streamData;
+                    video.srcObject = streamData;
+                    video.style.display = 'block';
+                    canvas.style.display = 'none';
+                    wrapperFallback.classList.add('hidden');
+                    btnTukarKamera.classList.remove('hidden');
+                    
+                    state.mode = 'kamera_aktif';
+                    setLoadingState(false, "📸 Jepret Bukti");
+                    tampilkanPesan("", "hidden");
+                } catch (err) {
+                    console.warn("WebRTC Gagal, Mengaktifkan Lapis 2 Fallback:", err.name);
+                    aktifkanFallback(err.name);
+                }
+            }
+
+            // 7. Lapis 2 & 3: Fallback Input Native / Upload Surat
+            function aktifkanFallback(alasan) {
+                hentikanStream();
+                video.style.display = 'none';
+                canvas.style.display = 'none';
+                btnTukarKamera.classList.add('hidden');
+                wrapperFallback.classList.remove('hidden');
+
+                if (state.keterangan !== 'hadir') {
+                    labelFallback.innerText = "Upload Foto Surat Dokter / Bukti Izin:";
+                    inputFallback.removeAttribute('capture'); // Bebas ambil dari galeri jika sakit
+                    tampilkanPesan(`Mode ${state.keterangan.toUpperCase()} Aktif. Wajib upload bukti.`, "bg-blue-50 text-blue-800 border border-blue-200");
+                } else {
+                    labelFallback.innerText = "Gunakan Kamera Bawaan HP:";
+                    inputFallback.setAttribute('capture', 'environment'); // Wajib kamera langsung
+                    const pesan = alasan === 'NotAllowedError' ? 
+                        "Izin kamera ditolak. Gunakan tombol pilih foto di bawah." : 
+                        "Gunakan kamera bawaan perangkat.";
+                    tampilkanPesan(pesan, "bg-amber-50 text-amber-800 border border-amber-200");
+                }
+
+                state.mode = 'review';
+                setLoadingState(false, "🚀 Kirim Bukti");
+
+                inputFallback.onchange = (evt) => {
+                    if (evt.target.files?.[0]) {
+                        state.fileBlob = evt.target.files[0];
+                        tampilkanPesan("File siap. Klik Kirim Bukti.", "bg-emerald-50 text-emerald-800 border border-emerald-200");
+                    }
+                };
+            }
+
+            // 8. Jepret & Watermark (Kriteria 7 - Kompresi Canvas)
+            function jepretFoto() {
+                if (!video.videoWidth) return;
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+
+                if (state.facingMode === 'user') {
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                }
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                if (state.facingMode === 'user') {
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                }
+
+                const waktuTeks = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                const tglTeks = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                const watermarkStr = `PIKET 12A • ${tglTeks} ${waktuTeks} WIB • GPS: ${state.lokasiValid ? 'Akurat' : 'Null'}`;
+
+                ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+                ctx.fillRect(12, canvas.height - 42, Math.max(300, ctx.measureText(watermarkStr).width + 20), 30);
+                ctx.font = "bold 13px sans-serif";
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(watermarkStr, 22, canvas.height - 22);
+
+                canvas.toBlob((blob) => { state.fileBlob = blob; }, 'image/jpeg', 0.6); // Kompresi 60%
+
+                hentikanStream();
+                video.style.display = 'none';
+                canvas.style.display = 'block';
+                btnTukarKamera.classList.add('hidden');
+
+                state.mode = 'review';
+                setLoadingState(false, "🚀 Ya, Kirim Data");
+            }
+
+            // 9. Kirim Data
+            function prosesPengiriman() {
+                if (!state.fileBlob) {
+                    tampilkanPesan("Silakan lampirkan bukti foto terlebih dahulu.", "bg-red-50 text-red-700 border border-red-200");
+                    return;
+                }
+
+                setLoadingState(true, "Mengunggah Data...");
+                btnAksi.querySelector('svg').classList.add('animate-spin'); // Efek loading
+
+                setTimeout(() => {
+                    // Update Status Lokal
+                    const me = anggotaPiket.find(a => a.nama.includes('(Anda)'));
+                    if(me) me.status = 'sudah';
+                    renderAnggota();
+
+                    state.mode = 'sukses';
+                    btnAksi.disabled = true;
+                    btnAksi.className = "w-full bg-emerald-600 text-white font-semibold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 cursor-default";
+                    btnAksi.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <span class="text-sm">Berhasil Diterima</span>`;
+
+                    tampilkanPesan("Data kehadiran dan bukti telah diamankan ke Server.", "bg-emerald-50 text-emerald-800 border border-emerald-200");
+                    
+                    const teksWa = encodeURIComponent(`Halo, saya Muhammad Jazil telah melakukan absensi dengan status: *${state.keterangan.toUpperCase()}*. Bukti sudah masuk ke sistem.`);
+                    const btnShare = document.getElementById('btn-share-wa');
+                    if (btnShare) btnShare.href = `https://wa.me/?text=${teksWa}`;
+                    document.getElementById('area-share-wa').classList.remove('hidden');
+
+                    if ("vibrate" in navigator) navigator.vibrate([60, 40, 60]);
+                }, 1500);
+            }
+
+            // 10. Utils
+            function hentikanStream() {
+                if (state.stream) {
+                    state.stream.getTracks().forEach(track => track.stop());
+                    state.stream = null;
+                }
+                if (video) video.srcObject = null;
+            }
+
+            function setLoadingState(loading, teks) {
+                btnAksi.disabled = loading;
+                btnAksi.style.opacity = loading ? "0.8" : "1";
+                labelBtnAksi.innerText = teks;
+            }
+
+            function tampilkanPesan(teks, classStyle) {
+                if (!teks) {
+                    pesanSistem.classList.add('hidden');
+                    return;
+                }
+                pesanSistem.className = `text-xs text-center font-medium p-3 rounded-xl transition-all ${classStyle}`;
+                pesanSistem.innerText = teks;
+                pesanSistem.classList.remove('hidden');
+            }
+
+            // Bootstrapping Initial
+            renderAnggota();
+            cekWaktu();
+            cekLokasi(); // Memulai proses validasi syarat absen
+
+        })();
+    </script>
+</body>
+</html>
